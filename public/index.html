@@ -21,6 +21,48 @@
   <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
   <script>
 
+    let db
+
+    const request = indexedDB.open('tododb', 1)
+
+    const checkDatabase = () => {
+      const transaction = db.transaction(['items'], 'readwrite')
+      const store = transaction.objectStore('items')
+
+      const getAll = store.getAll()
+
+      getAll.onsuccess = () => {
+        if (getAll.result.length > 0) {
+          axios.post('/api/items', getAll.result)
+            .then(() => {
+              const transaction = db.transaction(['items'], 'readwrite')
+              const store = transaction.objectStore('items')
+              store.clear()
+            })
+        }
+      }
+    }
+
+    const saveItem = item => {
+      const transaction = db.transaction(['items'], 'readwrite')
+      const store = transaction.objectStore('items')
+      store.add(item)
+    }
+
+    request.onupgradeneeded = event => {
+      const db = event.target.result
+
+      db.createObjectStore('items')
+    }
+
+    request.onsuccess = event => {
+      db = event.target.result
+
+      if (navigator.onLine) {
+        checkDatabase
+      }
+    }
+
 
 
     const renderItems = items => {
@@ -45,7 +87,10 @@
     const addItem = item => {
       axios.post('/api/items', item)
         .then(() => getItems())
-        .catch(e => console.error(e))
+        .catch(e => {
+          saveItem(item)
+          console.error(e)
+        })
     }
 
     const updateItem = (id, updates) => {
@@ -83,6 +128,8 @@
     })
 
     getItems()
+
+    window.addEventListener('online', checkDatabase)
   </script>
 </body>
 
