@@ -49,6 +49,26 @@
       store.add(item)
     }
 
+    const modifyItem = (text, isDone) => {
+      const transaction = db.transaction(['items'], 'readwrite')
+      const store = transaction.objectStore('items')
+
+      const cursorRequest = store.openCursor()
+
+      cursorRequest.onsuccess = event => {
+        const cursor = event.target.result
+
+        if (cursor) {
+          if (cursor.value.text === text) {
+            let item = cursor.value
+            item.isDone = isDone
+            cursor.update(item)
+          }
+          cursor.continue()
+        }
+      }
+    }
+
     request.onupgradeneeded = event => {
       const db = event.target.result
 
@@ -71,6 +91,7 @@
         let item = document.createElement('p')
         item.dataset.id = _id
         item.dataset.isDone = isDone
+        item.dataset.text = text
         item.className = 'updateItem'
         item.style.color = isDone ? 'green' : 'black'
         item.innerHTML = `${text} <button class="deleteItem" data-id="${_id}">X</button>`
@@ -93,11 +114,14 @@
         })
     }
 
-    const updateItem = (id, updates) => {
+    const updateItem = (id, updates, text) => {
       console.log(id, updates)
       axios.put(`/api/items/${id}`, updates)
         .then(() => getItems())
-        .catch(e => console.error(e))
+        .catch(e => {
+          console.error(e)
+          modifyItem(text, updates.isDone)
+        })
     }
 
     const deleteItem = id => {
@@ -119,7 +143,7 @@
       console.log(target)
       switch (target.className) {
         case 'updateItem':
-          updateItem(target.dataset.id, { isDone: !(target.dataset.isDone === 'true') })
+          updateItem(target.dataset.id, { isDone: !(target.dataset.isDone === 'true') }, target.dataset.text)
           break
         case 'deleteItem':
           deleteItem(target.dataset.id)
