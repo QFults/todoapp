@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+</head>
+
+<body>
+  <form>
+    <p>
+      <label for="item">item</label>
+      <input type="text" name="item" id="item">
+    </p>
+    <button id="addItem">Add Item</button>
+  </form>
+  <div id="items"></div>
+
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script>
+
+
+
+    const renderItems = items => {
+      document.getElementById('items').innerHTML = ''
+      items.forEach(({ _id, text, isDone }) => {
+        let item = document.createElement('p')
+        item.dataset.id = _id
+        item.dataset.isDone = isDone
+        item.className = 'updateItem'
+        item.style.color = isDone ? 'green' : 'black'
+        item.innerHTML = `${text} <button class="deleteItem" data-id="${_id}">X</button>`
+        document.getElementById('items').append(item)
+      })
+    }
+
+    const getItems = () => {
+      axios.get('/api/items')
+        .then(({ data: items }) => renderItems(items))
+        .catch(e => console.error(e))
+    }
+
+    const addItem = item => {
+      axios.post('/api/items', item)
+        .then(() => getItems())
+        .catch(e => console.error(e))
+    }
+
+    const updateItem = (id, updates) => {
+      console.log(id, updates)
+      axios.put(`/api/items/${id}`, updates)
+        .then(() => getItems())
+        .catch(e => console.error(e))
+    }
+
+    const deleteItem = id => {
+      axios.delete(`/api/items/${id}`)
+        .then(() => getItems())
+        .catch(e => console.error(e))
+    }
+
+    document.getElementById('addItem').addEventListener('click', event => {
+      event.preventDefault()
+      addItem({
+        text: document.getElementById('item').value,
+        isDone: false
+      })
+      document.getElementById('item').value = ''
+    })
+
+    document.addEventListener('click', ({ target }) => {
+      console.log(target)
+      switch (target.className) {
+        case 'updateItem':
+          updateItem(target.dataset.id, { isDone: !(target.dataset.isDone === 'true') })
+          break
+        case 'deleteItem':
+          deleteItem(target.dataset.id)
+          break
+      }
+    })
+
+    getItems()
+  </script>
+</body>
+
+</html>
